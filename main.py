@@ -5,6 +5,10 @@ from modules.mod3_visualization import run as run_viz
 
 st.set_page_config(page_title="业财数据平台", layout="wide")
 
+# session_state 在模块间共享，切换页面时保留各模块的上传数据、选项与处理结果
+if "active_module" not in st.session_state:
+    st.session_state.active_module = None
+
 # 侧边栏导航
 st.sidebar.title("🚀 业财数据平台")
 module = st.sidebar.radio(
