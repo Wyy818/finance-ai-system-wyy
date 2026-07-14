@@ -1,0 +1,12 @@
+# Python 缓存垃圾
+__pycache__/
+*.pyc
+*.pyo
+
+# 数据库文件（绝对保密）
+data.db
+*.sqlite
+*.db
+
+# 环境变量（如果有密码的话）
+.env
