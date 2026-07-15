@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.navigation import dispatch_page, render_sidebar
+from utils.ai_service import get_ai_service
 
 st.set_page_config(page_title="业财融合多功能系统", layout="wide", initial_sidebar_state="expanded", menu_items={
     "Get Help": "https://example.com/help",
@@ -27,4 +28,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 module_name, page_name = render_sidebar()
+
+if module_name == "数据处理" and page_name == "AI 智能清洗":
+    ai_service = get_ai_service()
+    with st.sidebar.expander("⚙️ AI服务配置", expanded=False):
+        ai_service.render_config()
+
 dispatch_page(module_name, page_name)

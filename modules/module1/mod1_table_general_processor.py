@@ -81,8 +81,13 @@ def run(df=None):
     init_module_state(PREFIX)
     
     df_key = f"{PREFIX}_df"
+    all_key = f"{PREFIX}_all_dfs"
+    sel_key = f"{PREFIX}_selected_sheets"
+    
     if df is not None:
         st.session_state[df_key] = df
+        st.session_state[all_key] = {"当前数据": df}
+        st.session_state[sel_key] = ["当前数据"]
     
     ops = _render_file_ops_checkboxes()
 
@@ -100,6 +105,22 @@ def run(df=None):
     with col_info:
         if st.session_state.get(df_key) is not None:
             st.info("提示：处理结果会同步到模块一的「AI 智能清洗」子页面。")
+
+    all_dfs = st.session_state.get(all_key, {})
+    sel_sheets = st.session_state.get(sel_key, [])
+    if all_dfs and len(all_dfs) > 1:
+        st.subheader("📋 选择数据源")
+        options = list(all_dfs.keys())
+        selected = st.multiselect(
+            "选择要处理的 Sheet（可多选）",
+            options=options,
+            default=sel_sheets if sel_sheets else [options[0]],
+            key=f"{PREFIX}_proc_sheet_selector",
+            help="可选择不同文件或不同 Sheet"
+        )
+        if selected:
+            st.session_state[sel_key] = selected
+            st.session_state[df_key] = all_dfs[selected[0]]
 
     if st.session_state.get(df_key) is not None:
         st.subheader("处理结果预览")
@@ -494,32 +515,25 @@ def _render_pivot_table(columns: list, prefix: str) -> dict:
     cols = st.multiselect("选择列字段", options=columns, key=f"{prefix}_pivot_cols")
 
     st.markdown("**值字段**")
-    value_count = st.session_state.get(f"{prefix}_pivot_value_count", 0)
-    for i in range(value_count):
-        col1, col2, col3 = st.columns([2, 2, 1])
-        with col1:
-            st.selectbox(f"值字段 {i+1}", [""] + columns, key=f"{prefix}_pivot_value_field_{i}")
-        with col2:
-            st.selectbox(f"聚合方式 {i+1}", ["求和", "计数", "平均", "最大值", "最小值"], key=f"{prefix}_pivot_value_agg_{i}")
-        with col3:
-            if i > 0 and st.button("🗑️", key=f"{prefix}_pivot_value_remove_{i}"):
-                st.session_state[f"{prefix}_pivot_value_count"] -= 1
-                st.rerun()
-    if st.button("➕ 添加值字段", key=f"{prefix}_pivot_value_add"):
-        st.session_state[f"{prefix}_pivot_value_count"] += 1
-        st.rerun()
-
-    pivot_values = []
-    for i in range(value_count):
-        field = st.session_state.get(f"{prefix}_pivot_value_field_{i}")
-        agg = st.session_state.get(f"{prefix}_pivot_value_agg_{i}", "求和")
-        if field:
-            pivot_values.append({"field": field, "agg": agg})
+    value_fields = st.multiselect("选择值字段", options=columns, key=f"{prefix}_pivot_value_fields")
+    
+    agg_functions = []
+    if value_fields:
+        for field in value_fields:
+            agg_key = f"{prefix}_pivot_agg_{field}"
+            if agg_key not in st.session_state:
+                st.session_state[agg_key] = "求和"
+            agg_func = st.selectbox(
+                f"{field} 聚合方式",
+                ["求和", "计数", "平均", "最大值", "最小值"],
+                key=agg_key
+            )
+            agg_functions.append({"field": field, "agg": agg_func})
 
     return {
         "rows": rows,
         "cols": cols,
-        "values": pivot_values
+        "values": agg_functions
     }
 
 
@@ -602,11 +616,13 @@ def _apply_cross_sheet_ops(all_dfs: dict, config: dict) -> pd.DataFrame:
 def render_custom_processing(df=None, uploaded_files=None):
     _init_custom_state(PREFIX)
     
-    all_dfs = {}
-    if df is not None:
-        all_dfs["当前数据"] = df
+    all_dfs = st.session_state.get(f"{PREFIX}_all_dfs", {})
     
-    if uploaded_files:
+    if df is not None and "当前数据" not in all_dfs:
+        all_dfs["当前数据"] = df
+        st.session_state[f"{PREFIX}_all_dfs"] = all_dfs
+    
+    if uploaded_files and not all_dfs:
         for file in uploaded_files:
             try:
                 xls = pd.ExcelFile(file)
@@ -620,7 +636,14 @@ def render_custom_processing(df=None, uploaded_files=None):
         st.info("请上传数据文件")
         return None
     
-    selected_sheets = _render_sheet_selector(all_dfs, PREFIX)
+    # 从 _render_file_upload 复用多选结果，避免重复渲染
+    sel_key = f"{PREFIX}_selected_sheets"
+    selected_sheets = st.session_state.get(sel_key, [])
+    if not selected_sheets:
+        options = list(all_dfs.keys())
+        selected_sheets = [options[0]] if options else []
+        st.session_state[sel_key] = selected_sheets
+    
     current_df = all_dfs[selected_sheets[0]] if selected_sheets else pd.DataFrame()
     st.session_state[f"{PREFIX}_current_df"] = current_df
     columns = list(current_df.columns)

@@ -77,7 +77,7 @@ SIDEBAR_CSS = """
         margin-bottom: 0.3rem;
     }
     [data-testid="stSidebar"] [data-testid="stExpander"] summary {
-        font-size: 1.1rem;
+        font-size: 1.66rem;
         font-weight: 700;
         color: #333333;
         padding: 0.6rem 0.8rem;
@@ -100,7 +100,7 @@ SIDEBAR_CSS = """
         margin: 0.1rem 0;
         border-radius: 6px;
         border: none;
-        font-size: 0.98rem;
+        font-size: 1.48rem;
         font-weight: 400;
         transition: all 0.15s;
     }
@@ -138,6 +138,55 @@ SIDEBAR_CSS = """
         display: none !important;
     }
 
+    /* 自定义侧边栏切换按钮 */
+    .nav-toggle-btn {
+        position: fixed;
+        top: 0.6rem;
+        left: 0.6rem;
+        z-index: 999999;
+        background: linear-gradient(135deg, #FFB6C1, #FFC0CB);
+        color: #1a1a1a;
+        border: none;
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+    }
+    .nav-toggle-btn:hover {
+        background: linear-gradient(135deg, #FF69B4, #FFB6C1);
+        color: #ffffff;
+        transform: scale(1.08);
+    }
+    .nav-toggle-btn.sidebar-open {
+        left: 0.6rem;
+    }
+    .nav-toggle-btn.sidebar-closed {
+        left: 0.6rem;
+    }
+
+    /* 侧边栏关闭状态 */
+    [data-testid="stSidebar"][data-nav-state="closed"] {
+        display: none !important;
+    }
+    [data-testid="stSidebar"][data-nav-state="open"] {
+        display: block !important;
+    }
+
+    /* 隐藏 Streamlit 自带的折叠按钮 */
+    [data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"],
+    [data-testid="stSidebar"] button[kind="header"],
+    [data-testid="stSidebar"] button[aria-label="Close sidebar"] {
+        display: none !important;
+    }
+
     [data-testid="stSidebar"] button[data-testid^="stButton"] {
         background: transparent !important;
     }
@@ -165,6 +214,65 @@ SIDEBAR_CSS = """
         color: #ffffff !important;
     }
 </style>
+
+<script>
+(function() {
+    if (window.__navToggleInited) return;
+    window.__navToggleInited = true;
+
+    const init = () => {
+        const sidebar = document.querySelector('[data-testid="stSidebar"]');
+        if (!sidebar) { setTimeout(init, 200); return; }
+
+        // 初始化状态
+        if (!localStorage.getItem('nav_sidebar_state')) {
+            localStorage.setItem('nav_sidebar_state', 'open');
+        }
+
+        const applyState = (state) => {
+            sidebar.setAttribute('data-nav-state', state);
+            const btn = document.getElementById('nav-toggle-btn');
+            if (btn) {
+                btn.textContent = state === 'open' ? '◀' : '▶';
+                btn.className = 'nav-toggle-btn sidebar-' + state;
+                btn.title = state === 'open' ? '隐藏导航栏' : '弹出导航栏';
+            }
+        };
+
+        // 创建切换按钮
+        if (!document.getElementById('nav-toggle-btn')) {
+            const btn = document.createElement('button');
+            btn.id = 'nav-toggle-btn';
+            btn.className = 'nav-toggle-btn';
+            btn.type = 'button';
+            btn.onclick = () => {
+                const cur = sidebar.getAttribute('data-nav-state') || 'open';
+                const next = cur === 'open' ? 'closed' : 'open';
+                localStorage.setItem('nav_sidebar_state', next);
+                applyState(next);
+            };
+            document.body.appendChild(btn);
+        }
+
+        applyState(localStorage.getItem('nav_sidebar_state') || 'open');
+
+        // 监听 Streamlit 重渲染
+        const observer = new MutationObserver(() => {
+            const cur = localStorage.getItem('nav_sidebar_state') || 'open';
+            if (sidebar.getAttribute('data-nav-state') !== cur) {
+                applyState(cur);
+            }
+        });
+        observer.observe(sidebar, { attributes: true, subtree: false });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
+</script>
 """
 
 

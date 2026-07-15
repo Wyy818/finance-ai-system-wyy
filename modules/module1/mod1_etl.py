@@ -1,12 +1,12 @@
 import io
 from typing import Optional
 
-import ollama
 import pandas as pd
 import streamlit as st
 
+from utils.ai_service import get_ai_service
 from utils.db_manager import save_to_db
-from utils.file_ops import handle_file_upload, init_module_state
+from utils.file_ops import handle_file_upload, init_module_state, render_sheet_selector
 from modules.module1 import mod1_table_general_processor
 
 PREFIX = "module1"
@@ -25,14 +25,22 @@ PAGE_CAPTIONS = {
 
 
 def _render_file_upload():
-    """统一渲染文件上传区域"""
+    """统一渲染文件上传区域，支持多文件和多sheet选择"""
     df_key = f"{PREFIX}_df"
+    all_key = f"{PREFIX}_all_dfs"
+    
     uploaded_df = handle_file_upload(PREFIX, "上传原始报表")
+    
+    all_dfs = st.session_state.get(all_key, {})
+    
+    st.subheader("📋 选择处理对象")
+    uploaded_df = render_sheet_selector(PREFIX, all_dfs)
+    
     if uploaded_df is not None:
-        st.success(f"当前数据：{len(st.session_state[df_key])} 行 × {len(st.session_state[df_key].columns)} 列")
+        st.success(f"当前数据：{len(uploaded_df)} 行 × {len(uploaded_df.columns)} 列")
         with st.expander("数据预览", expanded=False):
-            st.dataframe(st.session_state[df_key].head(10), use_container_width=True)
-    return st.session_state.get(df_key)
+            st.dataframe(uploaded_df.head(10), use_container_width=True)
+    return uploaded_df
 
 
 def _render_ai_cleaning(df):
@@ -74,15 +82,30 @@ df_cleaned = df.dropna()
         with st.chat_message("assistant"):
             with st.spinner("AI 正在思考并生成代码..."):
                 try:
-                    response = ollama.chat(
-                        model="qwen2.5",
+                    ai_service = get_ai_service()
+                    if not ai_service.api_key and ai_service.provider != "Ollama":
+                        st.warning("请先在AI服务配置中填写API Key")
+                        st.info("可用配置方式：")
+                        st.info("1. 选择OpenAI并填写API Key")
+                        st.info("2. 选择Anthropic并填写API Key")
+                        st.info("3. 选择Gemini并填写API Key")
+                        st.info("4. 选择Ollama（需要本地安装）")
+                        st.session_state[messages_key].append({"role": "assistant", "content": "⚠️ 请先配置AI服务"})
+                        return
+                    
+                    response = ai_service.chat(
                         messages=[
                             {"role": "system", "content": system_prompt},
                             {"role": "user", "content": prompt},
                         ],
+                        model=st.session_state.get("ai_model", "gpt-4o-mini"),
+                        temperature=0.7,
                     )
+                    if response is None:
+                        st.error("AI服务调用失败，请检查网络连接和API配置")
+                        return
                     ai_code = (
-                        response["message"]["content"]
+                        response
                         .strip()
                         .replace("```python", "")
                         .replace("```", "")
