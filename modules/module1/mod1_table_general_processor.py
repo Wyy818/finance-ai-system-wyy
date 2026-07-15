@@ -77,18 +77,14 @@ def _apply_selected_operations(ops: dict) -> Optional[pd.DataFrame]:
     return result
 
 
-def run():
-    st.title("📋 常规表格处理")
-    st.caption("勾选处理选项后一键应用，与「AI 智能清洗」共享同一份数据")
-
+def run(df=None):
     init_module_state(PREFIX)
-
+    
     df_key = f"{PREFIX}_df"
+    if df is not None:
+        st.session_state[df_key] = df
+    
     ops = _render_file_ops_checkboxes()
-
-    uploaded_df = handle_file_upload(PREFIX, "📂 上传原始报表")
-    if uploaded_df is not None:
-        st.success(f"当前数据：{len(st.session_state[df_key])} 行 × {len(st.session_state[df_key].columns)} 列")
 
     col_apply, col_info = st.columns([1, 3])
     with col_apply:
@@ -106,54 +102,54 @@ def run():
             st.info("提示：处理结果会同步到模块一的「AI 智能清洗」子页面。")
 
     if st.session_state.get(df_key) is not None:
-        st.divider()
         st.subheader("处理结果预览")
         st.dataframe(st.session_state[df_key], use_container_width=True, height=400)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💾 存入数据库", key=f"{PREFIX}_proc_save_db"):
-                save_to_db(st.session_state[df_key], "processed_data")
-                st.success("数据已安全入库！")
-        with col2:
-            output = io.BytesIO()
-            st.session_state[df_key].to_excel(output, index=False)
-            st.download_button(
-                label="📥 导出为 Excel",
-                data=output.getvalue(),
-                file_name="processed_data.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{PREFIX}_proc_export",
-            )
-
 
 def _init_custom_state(prefix: str):
-    if f"{prefix}_filter_row_count" not in st.session_state:
-        st.session_state[f"{prefix}_filter_row_count"] = 1
-    if f"{prefix}_filter_rows" not in st.session_state:
-        st.session_state[f"{prefix}_filter_rows"] = [{}]
-    if f"{prefix}_op_row_count" not in st.session_state:
-        st.session_state[f"{prefix}_op_row_count"] = 1
-    if f"{prefix}_op_rows" not in st.session_state:
-        st.session_state[f"{prefix}_op_rows"] = []
-    if f"{prefix}_formula_selected" not in st.session_state:
-        st.session_state[f"{prefix}_formula_selected"] = ""
-    if f"{prefix}_formula_params" not in st.session_state:
-        st.session_state[f"{prefix}_formula_params"] = {}
-    if f"{prefix}_pivot_filter_count" not in st.session_state:
-        st.session_state[f"{prefix}_pivot_filter_count"] = 0
-    if f"{prefix}_pivot_filters" not in st.session_state:
-        st.session_state[f"{prefix}_pivot_filters"] = []
-    if f"{prefix}_pivot_rows" not in st.session_state:
-        st.session_state[f"{prefix}_pivot_rows"] = []
-    if f"{prefix}_pivot_cols" not in st.session_state:
-        st.session_state[f"{prefix}_pivot_cols"] = []
-    if f"{prefix}_pivot_values" not in st.session_state:
-        st.session_state[f"{prefix}_pivot_values"] = []
-    if f"{prefix}_pivot_value_count" not in st.session_state:
-        st.session_state[f"{prefix}_pivot_value_count"] = 0
-    if f"{prefix}_cross_op_type" not in st.session_state:
-        st.session_state[f"{prefix}_cross_op_type"] = ""
+    default_values = {
+        f"{prefix}_filter_row_count": 1,
+        f"{prefix}_filter_rows": [{}],
+        f"{prefix}_op_row_count": 1,
+        f"{prefix}_op_rows": [],
+        f"{prefix}_formula_selected": "",
+        f"{prefix}_formula_params": {},
+        f"{prefix}_pivot_rows": [],
+        f"{prefix}_pivot_cols": [],
+        f"{prefix}_pivot_values": [],
+        f"{prefix}_pivot_value_count": 0,
+        f"{prefix}_cross_op_type": "",
+        f"{prefix}_current_df": pd.DataFrame(),
+    }
+    
+    for key, value in default_values.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+    
+    row_count = st.session_state[f"{prefix}_filter_row_count"]
+    for i in range(row_count):
+        if f"{prefix}_filter_field_{i}" not in st.session_state:
+            st.session_state[f"{prefix}_filter_field_{i}"] = ""
+        if f"{prefix}_filter_values_{i}" not in st.session_state:
+            st.session_state[f"{prefix}_filter_values_{i}"] = []
+    
+    op_count = st.session_state[f"{prefix}_op_row_count"]
+    for i in range(op_count):
+        if f"{prefix}_op_type_{i}" not in st.session_state:
+            st.session_state[f"{prefix}_op_type_{i}"] = ""
+        if f"{prefix}_op_fields_{i}" not in st.session_state:
+            st.session_state[f"{prefix}_op_fields_{i}"] = []
+
+    pivot_value_count = st.session_state[f"{prefix}_pivot_value_count"]
+    for i in range(pivot_value_count):
+        if f"{prefix}_pivot_value_field_{i}" not in st.session_state:
+            st.session_state[f"{prefix}_pivot_value_field_{i}"] = ""
+        if f"{prefix}_pivot_value_agg_{i}" not in st.session_state:
+            st.session_state[f"{prefix}_pivot_value_agg_{i}"] = "求和"
+    
+    for i in range(5):
+        if f"{prefix}_formula_param_{i}" not in st.session_state:
+            st.session_state[f"{prefix}_formula_param_{i}"] = ""
 
 
 def _render_sheet_selector(all_dfs: dict, prefix: str) -> list:
@@ -490,32 +486,13 @@ def _apply_formula(df: pd.DataFrame, formula_config: dict, all_dfs: dict = None)
 
 def _render_pivot_table(columns: list, prefix: str) -> dict:
     st.subheader("📊 数据透视表")
-    
-    st.markdown("**筛选条件**")
-    filter_count = st.session_state[f"{prefix}_pivot_filter_count"]
-    for i in range(filter_count):
-        col1, col2 = st.columns([2, 2])
-        with col1:
-            field = st.selectbox(f"筛选字段 {i+1}", [""] + columns, key=f"{prefix}_pivot_filter_field_{i}")
-        with col2:
-            if field:
-                vals = sorted(list(set(st.session_state.get(f"{prefix}_current_df", pd.DataFrame())[field].dropna().astype(str).tolist())))
-                st.session_state[f"{prefix}_pivot_filter_value_{i}"] = st.multiselect(f"筛选值 {i+1}", [""] + vals, key=f"{prefix}_pivot_filter_value_{i}")
-            else:
-                st.multiselect(f"筛选值 {i+1}", [""], key=f"{prefix}_pivot_filter_value_{i}", disabled=True)
-        if i > 0 and st.button("🗑️", key=f"{prefix}_pivot_filter_remove_{i}"):
-            st.session_state[f"{prefix}_pivot_filter_count"] -= 1
-            st.rerun()
-    if st.button("➕ 添加筛选", key=f"{prefix}_pivot_filter_add"):
-        st.session_state[f"{prefix}_pivot_filter_count"] += 1
-        st.rerun()
-    
+
     st.markdown("**行标题**")
     rows = st.multiselect("选择行字段", options=columns, key=f"{prefix}_pivot_rows")
-    
+
     st.markdown("**列标题**")
     cols = st.multiselect("选择列字段", options=columns, key=f"{prefix}_pivot_cols")
-    
+
     st.markdown("**值字段**")
     value_count = st.session_state.get(f"{prefix}_pivot_value_count", 0)
     for i in range(value_count):
@@ -531,23 +508,15 @@ def _render_pivot_table(columns: list, prefix: str) -> dict:
     if st.button("➕ 添加值字段", key=f"{prefix}_pivot_value_add"):
         st.session_state[f"{prefix}_pivot_value_count"] += 1
         st.rerun()
-    
+
     pivot_values = []
     for i in range(value_count):
         field = st.session_state.get(f"{prefix}_pivot_value_field_{i}")
         agg = st.session_state.get(f"{prefix}_pivot_value_agg_{i}", "求和")
         if field:
             pivot_values.append({"field": field, "agg": agg})
-    
-    filters = []
-    for i in range(filter_count):
-        field = st.session_state.get(f"{prefix}_pivot_filter_field_{i}")
-        values = st.session_state.get(f"{prefix}_pivot_filter_value_{i}", [])
-        if field and values:
-            filters.append({"field": field, "values": values})
-    
+
     return {
-        "filters": filters,
         "rows": rows,
         "cols": cols,
         "values": pivot_values
@@ -558,13 +527,10 @@ def _apply_pivot_table(df: pd.DataFrame, pivot_config: dict) -> pd.DataFrame:
     if not pivot_config["values"]:
         return df
     result = df.copy()
-    
-    for f in pivot_config["filters"]:
-        result = result[result[f["field"]].astype(str).isin(f["values"])]
-    
+
     agg_map = {"求和": "sum", "计数": "count", "平均": "mean", "最大值": "max", "最小值": "min"}
     values = {v["field"]: agg_map.get(v["agg"], "sum") for v in pivot_config["values"]}
-    
+
     pivot = pd.pivot_table(
         result,
         index=pivot_config["rows"],
@@ -633,10 +599,7 @@ def _apply_cross_sheet_ops(all_dfs: dict, config: dict) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def render_custom_processing(df, uploaded_files=None):
-    st.title("🎛️ 自定义数据处理")
-    st.caption("通过动态 UI 进行复杂数据操作，无需编写代码")
-    
+def render_custom_processing(df=None, uploaded_files=None):
     _init_custom_state(PREFIX)
     
     all_dfs = {}
@@ -654,7 +617,7 @@ def render_custom_processing(df, uploaded_files=None):
                 st.warning(f"读取文件 {file.name} 失败: {e}")
     
     if not all_dfs:
-        st.info("请上传数据文件或在模块一上传数据")
+        st.info("请上传数据文件")
         return None
     
     selected_sheets = _render_sheet_selector(all_dfs, PREFIX)
@@ -729,44 +692,5 @@ def render_custom_processing(df, uploaded_files=None):
         final_result = results.get(f"跨表-{cross_config['op_type']}", pivot_result)
     
     st.session_state[f"{PREFIX}_custom_result"] = final_result
-    st.session_state[f"{PREFIX}_custom_results"] = results
-    
-    st.divider()
-    st.subheader("📤 导出选项")
-    
-    if len(results) == 1:
-        output = io.BytesIO()
-        final_result.to_excel(output, index=False)
-        st.download_button(
-            label="📥 导出结果",
-            data=output.getvalue(),
-            file_name="custom_processed.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            key=f"{PREFIX}_custom_export_single"
-        )
-    else:
-        col1, col2 = st.columns(2)
-        with col1:
-            output = io.BytesIO()
-            final_result.to_excel(output, index=False)
-            st.download_button(
-                label="📥 导出当前结果",
-                data=output.getvalue(),
-                file_name="custom_processed.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{PREFIX}_custom_export_single"
-            )
-        with col2:
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                for sheet_name, df_result in results.items():
-                    df_result.to_excel(writer, sheet_name=sheet_name[:31], index=False)
-            st.download_button(
-                label="📦 打包导出（多Sheet）",
-                data=output.getvalue(),
-                file_name="custom_processed_all.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{PREFIX}_custom_export_all"
-            )
     
     return final_result

@@ -21,7 +21,7 @@ def init_module_state(prefix: str, defaults: Optional[dict] = None):
             st.session_state[key] = value
 
 
-def handle_file_upload(prefix: str, label: str = "📂 上传文件") -> Optional[pd.DataFrame]:
+def handle_file_upload(prefix: str, label: str = "上传文件") -> Optional[pd.DataFrame]:
     """
     上传文件并缓存到 session_state；仅在新文件时重新读取，切换模块不会丢失已处理数据。
     """
@@ -35,6 +35,7 @@ def handle_file_upload(prefix: str, label: str = "📂 上传文件") -> Optiona
         type=["xlsx", "csv"],
         key=f"{prefix}_upload",
         accept_multiple_files=merge_enabled,
+        help="支持 Excel (.xlsx) 和 CSV 文件格式",
     )
 
     if not uploaded_files:
