@@ -5,45 +5,25 @@ import pandas as pd
 import streamlit as st
 
 from utils.db_manager import save_to_db
-from utils.file_ops import (
-    apply_selected_operations,
-    handle_file_upload,
-    init_module_state,
-    render_file_ops_checkboxes,
-)
+from utils.file_ops import handle_file_upload, init_module_state
 
-PREFIX = "etl"
+PREFIX = "module1"
 
 
 def run():
-    st.title("🧹 模块一：AI 智能数据清洗工作台")
+    st.title("🧹 AI 智能数据清洗")
+    st.caption("通过自然语言对话，让 AI 生成并执行 Pandas 清洗代码")
 
     init_module_state(PREFIX, {"messages": []})
 
     df_key = f"{PREFIX}_df"
     messages_key = f"{PREFIX}_messages"
 
-    ops = render_file_ops_checkboxes(PREFIX)
-
     uploaded_df = handle_file_upload(PREFIX, "📂 上传原始报表")
     if uploaded_df is not None:
         st.success(f"当前数据：{len(st.session_state[df_key])} 行 × {len(st.session_state[df_key].columns)} 列")
-
-    col_apply, col_preview = st.columns([1, 3])
-    with col_apply:
-        if st.button("⚙️ 应用所选操作", key=f"{PREFIX}_apply_ops"):
-            if st.session_state.get(df_key) is None:
-                st.warning("请先上传表格文件！")
-            else:
-                before = len(st.session_state[df_key])
-                apply_selected_operations(PREFIX, ops)
-                after = len(st.session_state[df_key])
-                st.success(f"操作完成：{before} 行 → {after} 行")
-
-    with col_preview:
-        if st.session_state.get(df_key) is not None:
-            with st.expander("📊 当前数据预览", expanded=False):
-                st.dataframe(st.session_state[df_key].head(10), use_container_width=True)
+        with st.expander("📊 数据预览", expanded=False):
+            st.dataframe(st.session_state[df_key].head(10), use_container_width=True)
 
     for message in st.session_state[messages_key]:
         with st.chat_message(message["role"]):
@@ -120,7 +100,7 @@ df_cleaned = df.dropna()
         st.divider()
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("💾 存入数据库", key=f"{PREFIX}_save_db"):
+            if st.button("💾 存入数据库", key=f"{PREFIX}_ai_save_db"):
                 save_to_db(st.session_state[df_key], "cleaned_data")
                 st.success("数据已安全入库！")
         with col2:
@@ -131,5 +111,5 @@ df_cleaned = df.dropna()
                 data=output.getvalue(),
                 file_name="cleaned_data.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key=f"{PREFIX}_export",
+                key=f"{PREFIX}_ai_export",
             )
