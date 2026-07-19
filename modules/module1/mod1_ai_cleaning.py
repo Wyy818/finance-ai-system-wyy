@@ -1,5 +1,4 @@
 import io
-from typing import Optional
 
 import pandas as pd
 import streamlit as st
@@ -7,25 +6,16 @@ import streamlit as st
 from utils.ai_service import get_ai_service
 from utils.db_manager import save_to_db
 from utils.file_ops import handle_file_upload, init_module_state, render_sheet_selector
-from modules.module1 import mod1_table_general_processor
 
 PREFIX = "module1"
 
-PAGE_TITLES = {
-    "AI 智能清洗": "🧹 AI 智能数据清洗",
-    "常规表格处理": "📋 常规表格处理",
-    "自定义处理": "🎛️ 自定义数据处理",
-}
 
-PAGE_CAPTIONS = {
-    "AI 智能清洗": "通过自然语言对话，让 AI 生成并执行 Pandas 清洗代码",
-    "常规表格处理": "勾选处理选项后一键应用，与「AI 智能清洗」共享同一份数据",
-    "自定义处理": "通过动态 UI 进行复杂数据操作，无需编写代码",
-}
-
-
-def _render_file_upload():
-    """统一渲染文件上传区域，支持多文件和多sheet选择"""
+def run():
+    st.title("🧹 AI 智能数据清洗")
+    st.caption("通过自然语言对话，让 AI 生成并执行 Pandas 清洗代码")
+    
+    init_module_state(PREFIX, {"messages": []})
+    
     df_key = f"{PREFIX}_df"
     all_key = f"{PREFIX}_all_dfs"
     
@@ -40,11 +30,9 @@ def _render_file_upload():
         st.success(f"当前数据：{len(uploaded_df)} 行 × {len(uploaded_df.columns)} 列")
         with st.expander("数据预览", expanded=False):
             st.dataframe(uploaded_df.head(10), use_container_width=True)
-    return uploaded_df
-
-
-def _render_ai_cleaning(df):
-    """AI智能清洗功能"""
+    
+    st.divider()
+    
     messages_key = f"{PREFIX}_messages"
     
     for message in st.session_state[messages_key]:
@@ -55,9 +43,9 @@ def _render_ai_cleaning(df):
 
     if prompt := st.chat_input(
         "请输入清洗指令（例如：删除空值，将日期格式化）",
-        disabled=df is None,
+        disabled=uploaded_df is None,
     ):
-        if df is None:
+        if uploaded_df is None:
             st.warning("请先在上方上传表格文件！")
             return
 
@@ -65,7 +53,7 @@ def _render_ai_cleaning(df):
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        current_df = df
+        current_df = uploaded_df
         df_info = (
             f"当前表格列名：{list(current_df.columns)}\n"
             f"前5行数据预览：\n{current_df.head().to_string()}"
@@ -126,44 +114,23 @@ df_cleaned = df.dropna()
                             "df": df_result,
                         }
                     )
-                    st.session_state[f"{PREFIX}_df"] = df_result
+                    st.session_state[df_key] = df_result
 
                 except Exception as e:
                     error_msg = f"❌ AI 生成的代码执行报错：{str(e)}"
                     st.error(error_msg)
                     st.session_state[messages_key].append({"role": "assistant", "content": error_msg})
-
-
-def run(page_name: Optional[str] = None):
-    if page_name is None:
-        page_name = st.session_state.get("nav_page", "AI 智能清洗")
     
-    st.title(PAGE_TITLES.get(page_name, "数据处理"))
-    st.caption(PAGE_CAPTIONS.get(page_name, ""))
-    
-    init_module_state(PREFIX, {"messages": []})
-    
-    df = _render_file_upload()
-    
-    st.divider()
-    
-    if page_name == "AI 智能清洗":
-        _render_ai_cleaning(df)
-    elif page_name == "常规表格处理":
-        mod1_table_general_processor.run(df)
-    elif page_name == "自定义处理":
-        mod1_table_general_processor.render_custom_processing(df)
-    
-    if df is not None:
+    if uploaded_df is not None:
         st.divider()
         col1, col2 = st.columns(2)
         with col1:
             if st.button("💾 存入数据库", key=f"{PREFIX}_save_db"):
-                save_to_db(df, "processed_data")
+                save_to_db(uploaded_df, "processed_data")
                 st.success("数据已安全入库！")
         with col2:
             output = io.BytesIO()
-            df.to_excel(output, index=False)
+            uploaded_df.to_excel(output, index=False)
             st.download_button(
                 label="📥 导出为 Excel",
                 data=output.getvalue(),

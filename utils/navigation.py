@@ -6,9 +6,11 @@ NAV_CONFIG = {
         "icon": "🧹",
         "color": "#4FC3F7",
         "pages": {
-            "AI 智能清洗": "modules.module1.mod1_etl",
-            "常规表格处理": "modules.module1.mod1_table_general_processor",
-            "自定义处理": "modules.module1.mod1_table_general_processor",
+            "AI 智能清洗": "modules.module1.mod1_ai_cleaning",
+            "常规表格处理": "modules.module1.mod1_table_processing",
+            "自定义处理": "modules.module1.mod1_custom_processing",
+            "业务台账处理": "modules.module1.mod1_project_ledger",
+            "财务报表处理": "modules.module1.mod1_finance_report",
         },
     },
     "AI 异常分析": {
@@ -25,19 +27,66 @@ NAV_CONFIG = {
             "图表生成": "modules.module3.mod3_visualization",
         },
     },
+    "数据分析报告": {
+        "icon": "📝",
+        "color": "#FFB74D",
+        "pages": {
+            "报告生成": "modules.module4.mod4_report",
+        },
+    },
+    "日常工作处理": {
+        "icon": "📋",
+        "color": "#A1887F",
+        "pages": {
+            "Word处理": "modules.module5.mod5_word",
+            "PPT处理": "modules.module5.mod5_ppt",
+        },
+    },
+    "数据库": {
+        "icon": "🗄️",
+        "color": "#78909C",
+        "pages": {
+            "数据管理": "modules.module6.mod6_database",
+        },
+    },
 }
 
 SIDEBAR_CSS = """
 <style>
     [data-testid="stSidebar"] {
         background: linear-gradient(180deg, #e8e8e8 0%, #d0d0d0 100%);
+        width: 325px !important;
+        overflow-y: auto !important;
+        max-height: 100vh !important;
     }
+
+    [data-testid="stMain"] {
+        padding-top: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    [data-testid="stMainBlockContainer"] {
+        padding: 10px 25px !important;
+        margin: 0 !important;
+    }
+
+    [data-testid="stMarkdown"] h1 {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+    }
+
+    [data-testid="stMain"] [data-testid="stMarkdown"] h1 {
+        font-size: 0.75rem !important;
+        font-weight: 600 !important;
+    }
+
     [data-testid="stSidebar"] .sidebar-brand {
         text-align: center;
-        padding: 0.2rem 0.5rem 0.6rem;
+        padding: 0.3rem 0.5rem;
         width: 100%;
         box-sizing: border-box;
-        margin-top: -0.5rem;
     }
     [data-testid="stSidebar"] .sidebar-brand h1 {
         font-size: 2.25rem;
@@ -47,60 +96,65 @@ SIDEBAR_CSS = """
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.05em;
         width: 100%;
         line-height: 1.3;
     }
     [data-testid="stSidebar"] .sidebar-brand p {
         color: #666666;
-        font-size: 0.85rem;
-        margin: 0.3rem 0 0;
+        font-size: 0.75rem;
+        margin: 0.2rem 0 0;
         text-align: center;
     }
     [data-testid="stSidebar"] .nav-divider {
         border: none;
         border-top: 1px solid #cccccc;
-        margin: 0.5rem 0;
+        margin: 0.3rem 0;
     }
     [data-testid="stSidebar"] .sidebar-footer {
         color: #666666;
-        font-size: 0.85rem;
-        text-align: center;
-        padding: 1rem 0 0.5rem;
+        font-size: 1.125rem;
+        text-align: left;
+        padding: 0.2rem 0.5rem;
         font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     [data-testid="stSidebar"] [data-testid="stExpander"] {
         background: #f5f5f5;
         border: 1px solid #cccccc;
-        border-radius: 8px;
-        margin-bottom: 0.3rem;
+        border-radius: 6px;
+        margin-bottom: 0.15rem;
+        padding: 0;
     }
     [data-testid="stSidebar"] [data-testid="stExpander"] summary {
-        font-size: 1.66rem;
+        font-size: 0.95rem;
         font-weight: 700;
         color: #333333;
-        padding: 0.6rem 0.8rem;
+        padding: 0.3rem 0.6rem;
         cursor: pointer;
         text-align: left;
+        margin: 0;
     }
     [data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
         background: #e0e0e0;
-        border-radius: 8px;
+        border-radius: 6px;
     }
     [data-testid="stSidebar"] [data-testid="stExpander"] summary::marker {
-        font-size: 0.85rem;
+        font-size: 0.7rem;
         color: #888888;
     }
 
     [data-testid="stSidebar"] [data-testid="stExpander"] [data-testid="stButton"] button {
         width: 100%;
         text-align: left;
-        padding: 0.45rem 1.5rem;
-        margin: 0.1rem 0;
-        border-radius: 6px;
+        padding: 0.25rem 0.6rem 0.25rem 1.2rem;
+        margin: 0.05rem 0.3rem;
+        border-radius: 4px;
         border: none;
-        font-size: 1.48rem;
+        font-size: 0.85rem;
         font-weight: 400;
         transition: all 0.15s;
     }
@@ -138,55 +192,6 @@ SIDEBAR_CSS = """
         display: none !important;
     }
 
-    /* 自定义侧边栏切换按钮 */
-    .nav-toggle-btn {
-        position: fixed;
-        top: 0.6rem;
-        left: 0.6rem;
-        z-index: 999999;
-        background: linear-gradient(135deg, #FFB6C1, #FFC0CB);
-        color: #1a1a1a;
-        border: none;
-        border-radius: 50%;
-        width: 42px;
-        height: 42px;
-        font-size: 1.2rem;
-        font-weight: 700;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        line-height: 1;
-    }
-    .nav-toggle-btn:hover {
-        background: linear-gradient(135deg, #FF69B4, #FFB6C1);
-        color: #ffffff;
-        transform: scale(1.08);
-    }
-    .nav-toggle-btn.sidebar-open {
-        left: 0.6rem;
-    }
-    .nav-toggle-btn.sidebar-closed {
-        left: 0.6rem;
-    }
-
-    /* 侧边栏关闭状态 */
-    [data-testid="stSidebar"][data-nav-state="closed"] {
-        display: none !important;
-    }
-    [data-testid="stSidebar"][data-nav-state="open"] {
-        display: block !important;
-    }
-
-    /* 隐藏 Streamlit 自带的折叠按钮 */
-    [data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"],
-    [data-testid="stSidebar"] button[kind="header"],
-    [data-testid="stSidebar"] button[aria-label="Close sidebar"] {
-        display: none !important;
-    }
-
     [data-testid="stSidebar"] button[data-testid^="stButton"] {
         background: transparent !important;
     }
@@ -213,66 +218,8 @@ SIDEBAR_CSS = """
         background: linear-gradient(135deg, #87CEEB, #5BB5E0) !important;
         color: #ffffff !important;
     }
+
 </style>
-
-<script>
-(function() {
-    if (window.__navToggleInited) return;
-    window.__navToggleInited = true;
-
-    const init = () => {
-        const sidebar = document.querySelector('[data-testid="stSidebar"]');
-        if (!sidebar) { setTimeout(init, 200); return; }
-
-        // 初始化状态
-        if (!localStorage.getItem('nav_sidebar_state')) {
-            localStorage.setItem('nav_sidebar_state', 'open');
-        }
-
-        const applyState = (state) => {
-            sidebar.setAttribute('data-nav-state', state);
-            const btn = document.getElementById('nav-toggle-btn');
-            if (btn) {
-                btn.textContent = state === 'open' ? '◀' : '▶';
-                btn.className = 'nav-toggle-btn sidebar-' + state;
-                btn.title = state === 'open' ? '隐藏导航栏' : '弹出导航栏';
-            }
-        };
-
-        // 创建切换按钮
-        if (!document.getElementById('nav-toggle-btn')) {
-            const btn = document.createElement('button');
-            btn.id = 'nav-toggle-btn';
-            btn.className = 'nav-toggle-btn';
-            btn.type = 'button';
-            btn.onclick = () => {
-                const cur = sidebar.getAttribute('data-nav-state') || 'open';
-                const next = cur === 'open' ? 'closed' : 'open';
-                localStorage.setItem('nav_sidebar_state', next);
-                applyState(next);
-            };
-            document.body.appendChild(btn);
-        }
-
-        applyState(localStorage.getItem('nav_sidebar_state') || 'open');
-
-        // 监听 Streamlit 重渲染
-        const observer = new MutationObserver(() => {
-            const cur = localStorage.getItem('nav_sidebar_state') || 'open';
-            if (sidebar.getAttribute('data-nav-state') !== cur) {
-                applyState(cur);
-            }
-        });
-        observer.observe(sidebar, { attributes: true, subtree: false });
-    };
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
-})();
-</script>
 """
 
 
@@ -281,7 +228,7 @@ def _render_brand():
         """
         <div class="sidebar-brand">
             <h1>业财融合<br>多功能系统</h1>
-            <p>Finance AI System</p>
+            <p class="sidebar-footer">Finance AI System  |  Created by WY 😜</p>
         </div>
         <hr class="nav-divider">
         """,
@@ -291,7 +238,7 @@ def _render_brand():
 
 def render_sidebar() -> tuple[str, str]:
     """渲染侧边栏，返回 (module_name, page_name)。"""
-    st.sidebar.markdown(SIDEBAR_CSS, unsafe_allow_html=True)
+    st.markdown(SIDEBAR_CSS, unsafe_allow_html=True)
     _render_brand()
 
     module_names = list(NAV_CONFIG.keys())
@@ -332,21 +279,11 @@ def render_sidebar() -> tuple[str, str]:
                     st.session_state[expander_key] = True
                     st.rerun()
 
-    st.sidebar.markdown('<hr class="nav-divider">', unsafe_allow_html=True)
-    st.sidebar.markdown(
-        '<div class="sidebar-footer">Produced by wyy 😜</div>',
-        unsafe_allow_html=True,
-    )
-
     return st.session_state.nav_module, st.session_state.nav_page
 
 
 def dispatch_page(module_name: str, page_name: str):
     """根据导航配置动态加载并运行对应子页面。"""
-    if module_name == "数据处理":
-        import modules.module1.mod1_etl as mod1_etl
-        mod1_etl.run(page_name=page_name)
-    else:
-        module_path = NAV_CONFIG[module_name]["pages"][page_name]
-        mod = importlib.import_module(module_path)
-        mod.run()
+    module_path = NAV_CONFIG[module_name]["pages"][page_name]
+    mod = importlib.import_module(module_path)
+    mod.run()

@@ -25,3 +25,18 @@ def get_all_tables() -> list:
     tables = [row[0] for row in cursor.fetchall()]
     conn.close()
     return tables
+
+def get_table_data(table_name: str) -> pd.DataFrame:
+    """从数据库读取指定表的数据"""
+    conn = sqlite3.connect(DB_PATH)
+    df = pd.read_sql(f"SELECT * FROM {table_name}", conn)
+    conn.close()
+    return df
+
+def delete_table(table_name: str):
+    """删除数据库中的指定表"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+    conn.commit()
+    conn.close()

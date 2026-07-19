@@ -75,6 +75,26 @@ def run():
                 key=f"{PREFIX}_combined_types"
             )
 
+        st.subheader("自定义坐标轴刻度")
+        col1, col2 = st.columns(2)
+        with col1:
+            y_min = st.number_input("Y轴最小值", value=None, placeholder="自动", key=f"{PREFIX}_y_min")
+            y_max = st.number_input("Y轴最大值", value=None, placeholder="自动", key=f"{PREFIX}_y_max")
+        with col2:
+            x_label = st.text_input("X轴标签", value=x_col, key=f"{PREFIX}_x_label")
+            y_label = st.text_input("Y轴标签", value="数值", key=f"{PREFIX}_y_label")
+
+        st.subheader("自定义图表颜色")
+        color_palette = st.selectbox(
+            "选择颜色方案",
+            ["默认", "彩虹色", "冷色调", "暖色调", "单色系"],
+            key=f"{PREFIX}_color_palette"
+        )
+        if color_palette == "单色系":
+            custom_color = st.color_picker("选择颜色", "#1f77b4", key=f"{PREFIX}_custom_color")
+
+        show_values = st.checkbox("显示数值标签", value=True, key=f"{PREFIX}_show_values")
+
         if st.button("生成图表", key=f"{PREFIX}_chart", type="primary"):
             st.session_state[chart_key] = True
 
@@ -82,28 +102,58 @@ def run():
             st.subheader("图表预览")
 
             try:
+                if color_palette == "彩虹色":
+                    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD']
+                elif color_palette == "冷色调":
+                    colors = ['#1E90FF', '#00CED1', '#4682B4', '#5F9EA0', '#708090']
+                elif color_palette == "暖色调":
+                    colors = ['#FF6347', '#FF8C00', '#FFA500', '#FFD700', '#CD853F']
+                elif color_palette == "单色系":
+                    colors = [custom_color] * len(y_cols)
+                else:
+                    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
+
+                layout_updates = {
+                    'xaxis': {'title': x_label},
+                    'yaxis': {'title': y_label}
+                }
+                if y_min is not None:
+                    layout_updates['yaxis']['range'] = [y_min, y_max] if y_max is not None else [y_min, None]
+                elif y_max is not None:
+                    layout_updates['yaxis']['range'] = [None, y_max]
+
                 if chart_type == "柱状图":
                     fig = px.bar(df, x=x_col, y=y_cols, barmode='group', title=f'{x_col} 柱状图')
+                    fig.update_layout(**layout_updates)
+                    if show_values:
+                        fig.update_traces(texttemplate='%{y:.2f}', textposition='outside')
                     st.plotly_chart(fig, use_container_width=True)
 
                 elif chart_type == "条形图":
                     fig = px.bar(df, x=x_col, y=y_cols, barmode='group', orientation='h', title=f'{x_col} 条形图')
+                    fig.update_layout(**layout_updates)
+                    if show_values:
+                        fig.update_traces(texttemplate='%{x:.2f}', textposition='outside')
                     st.plotly_chart(fig, use_container_width=True)
 
                 elif chart_type == "折线图":
                     fig = px.line(df, x=x_col, y=y_cols, title=f'{x_col} 折线图', markers=True)
+                    fig.update_layout(**layout_updates)
+                    if show_values:
+                        fig.update_traces(texttemplate='%{y:.2f}', textposition='top center')
                     st.plotly_chart(fig, use_container_width=True)
 
                 elif chart_type == "饼图":
                     if y_cols:
-                        fig = px.pie(df, values=y_cols[0], names=x_col, title=f'{y_cols[0]} 分布饼图')
+                        fig = px.pie(df, values=y_cols[0], names=x_col, title=f'{y_cols[0]} 分布饼图', color_discrete_sequence=colors)
+                        if show_values:
+                            fig.update_traces(texttemplate='%{value:.2f} (%{percent:.1f}%)', textposition='inside')
                         st.plotly_chart(fig, use_container_width=True)
                     else:
                         st.warning("请选择至少一个Y轴字段")
 
                 elif chart_type == "综合图":
                     fig = go.Figure()
-                    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd']
 
                     for i, y_col in enumerate(y_cols):
                         if "柱状图" in combined_types:
@@ -113,7 +163,15 @@ def run():
                         if "条形图" in combined_types:
                             fig.add_trace(go.Bar(x=df[x_col], y=df[y_col], name=f'{y_col} (条形)', marker_color=colors[i % len(colors)]))
 
-                    fig.update_layout(title=f'{x_col} 综合图', barmode='group')
+                    fig.update_layout(title=f'{x_col} 综合图', barmode='group', **layout_updates)
+                    if show_values:
+                        for trace in fig.data:
+                            if trace.type == 'bar':
+                                trace.texttemplate = '%{y:.2f}'
+                                trace.textposition = 'outside'
+                            elif trace.type == 'scatter':
+                                trace.texttemplate = '%{y:.2f}'
+                                trace.textposition = 'top center'
                     st.plotly_chart(fig, use_container_width=True)
 
                 output_html = fig.to_html(full_html=False)
